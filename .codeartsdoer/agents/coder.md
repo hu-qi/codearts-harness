@@ -1,4 +1,4 @@
---- 
+---
 description: >-
   自主编码 coding agent，每次实现一个 feature。上下文由 plugin 注入：feature
   描述、spec 切片、ARCHITECTURE.md、同类历史代码样本。实现功能、写测试、

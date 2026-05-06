@@ -34,6 +34,19 @@ function read(path) {
   return readFileSync(path, "utf8")
 }
 
+function parseJsonlLayers(path) {
+  const layers = []
+  const lines = read(path).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+  for (const [idx, line] of lines.entries()) {
+    const parsed = JSON.parse(line)
+    if (!parsed.layer) {
+      throw new Error(`line ${idx + 1} has no layer`)
+    }
+    layers.push(parsed.layer)
+  }
+  return layers
+}
+
 for (const path of requiredFiles) {
   existsSync(path) ? pass(`exists: ${path}`) : fail(`exists: ${path}`, "missing")
 }
@@ -68,24 +81,47 @@ for (const path of [
   ".codeartsdoer/config/inject-verifier.jsonl",
 ]) {
   if (!existsSync(path)) continue
-  const lines = read(path).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-  let ok = true
-  let detail = ""
-  for (const [idx, line] of lines.entries()) {
-    try {
-      const parsed = JSON.parse(line)
-      if (!parsed.layer) {
-        ok = false
-        detail = `line ${idx + 1} has no layer`
-        break
-      }
-    } catch (error) {
-      ok = false
-      detail = `line ${idx + 1}: ${error.message}`
-      break
+  try {
+    parseJsonlLayers(path)
+    pass(`jsonl layers: ${path}`)
+  } catch (error) {
+    fail(`jsonl layers: ${path}`, error.message)
+  }
+}
+
+if (existsSync(".codeartsdoer/plugins/inject-subagent-context.js")) {
+  const plugin = read(".codeartsdoer/plugins/inject-subagent-context.js")
+  const layerBlock = plugin.match(/const LAYERS = \{([\s\S]*?)\n\}/)
+  const knownLayers = new Set()
+  if (layerBlock) {
+    const layerRe = /^\s{2}([a-zA-Z_][\w]*):\s*\{/gm
+    let match
+    while ((match = layerRe.exec(layerBlock[1])) !== null) {
+      knownLayers.add(match[1])
     }
   }
-  ok ? pass(`jsonl layers: ${path}`) : fail(`jsonl layers: ${path}`, detail)
+
+  if (knownLayers.size === 0) {
+    fail("plugin exposes JSONL layer registry", "could not parse LAYERS")
+  } else {
+    pass("plugin exposes JSONL layer registry")
+  }
+
+  for (const path of [
+    ".codeartsdoer/config/inject-initializer.jsonl",
+    ".codeartsdoer/config/inject-coder.jsonl",
+    ".codeartsdoer/config/inject-verifier.jsonl",
+  ]) {
+    if (!existsSync(path) || knownLayers.size === 0) continue
+    try {
+      const missing = parseJsonlLayers(path).filter((layer) => !knownLayers.has(layer))
+      missing.length === 0
+        ? pass(`jsonl layers exist in plugin: ${path}`)
+        : fail(`jsonl layers exist in plugin: ${path}`, `missing: ${missing.join(", ")}`)
+    } catch {
+      // The JSONL syntax check above already reports the parse error.
+    }
+  }
 }
 
 const textTargets = requiredFiles.filter((path) => path.endsWith(".md") || path.endsWith(".js"))
@@ -115,6 +151,44 @@ if (existsSync(".gitignore")) {
   gitignore.includes(".codeartsdoer/")
     ? fail("top-level .gitignore keeps harness files trackable", "do not ignore .codeartsdoer/ at repository root")
     : pass("top-level .gitignore keeps harness files trackable")
+}
+
+for (const [path, expectedMode] of [
+  [".codeartsdoer/agents/coordinator.md", "primary"],
+  [".codeartsdoer/agents/initializer.md", "subagent"],
+  [".codeartsdoer/agents/coder.md", "subagent"],
+  [".codeartsdoer/agents/verifier.md", "subagent"],
+]) {
+  if (!existsSync(path)) continue
+  const content = read(path)
+  const frontmatter = content.match(/^---\n([\s\S]*?)\n---/)
+  if (!frontmatter) {
+    fail(`agent frontmatter: ${path}`, "missing frontmatter block")
+    continue
+  }
+  const hasDescription = /^description:/m.test(frontmatter[1])
+  const modeMatch = frontmatter[1].match(/^mode:\s*(\w+)/m)
+  const modeOk = modeMatch?.[1] === expectedMode
+  hasDescription && modeOk
+    ? pass(`agent frontmatter: ${path}`)
+    : fail(`agent frontmatter: ${path}`, `expected description and mode: ${expectedMode}`)
+}
+
+if (existsSync(".codeartsdoer/plugins/inject-subagent-context.js") && existsSync(".codeartsdoer/agents/coordinator.md")) {
+  const plugin = read(".codeartsdoer/plugins/inject-subagent-context.js")
+  const coordinator = read(".codeartsdoer/agents/coordinator.md")
+  const pluginHasCoderContract = /coder:\s*\/\^Implement feature/.test(plugin)
+  const pluginHasVerifierContract = /verifier:\s*\/\^Verify features\?/.test(plugin)
+  const coordinatorHasCoderContract = /coder:\s+`Implement feature <N>: <description>`/.test(coordinator)
+  const coordinatorHasVerifierContract = /verifier:\s+`Verify features: <id1>, <id2>`/.test(coordinator)
+
+  pluginHasCoderContract && pluginHasVerifierContract
+    ? pass("plugin prompt contract regexes exist")
+    : fail("plugin prompt contract regexes exist", "missing coder or verifier regex")
+
+  coordinatorHasCoderContract && coordinatorHasVerifierContract
+    ? pass("coordinator documents plugin prompt contracts")
+    : fail("coordinator documents plugin prompt contracts", "documented contract drifted from expected format")
 }
 
 const failed = checks.filter((check) => !check.ok)
