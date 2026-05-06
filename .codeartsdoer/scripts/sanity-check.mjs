@@ -4,11 +4,6 @@ import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 
 const requiredFiles = [
-  ".gitignore",
-  "LICENSE",
-  "README.md",
-  "USAGE.md",
-  "scripts/publish.sh",
   ".codeartsdoer/agents/coordinator.md",
   ".codeartsdoer/agents/initializer.md",
   ".codeartsdoer/agents/coder.md",
@@ -20,6 +15,14 @@ const requiredFiles = [
   ".codeartsdoer/config/inject-verifier.jsonl",
   ".codeartsdoer/skills/generate-app-spec/SKILL.md",
   ".codeartsdoer/skills/project-architecture-summarizer/SKILL.md",
+]
+
+const optionalRepoFiles = [
+  ".gitignore",
+  "LICENSE",
+  "README.md",
+  "USAGE.md",
+  "scripts/publish.sh",
 ]
 
 const checks = []
@@ -51,6 +54,10 @@ function parseJsonlLayers(path) {
 
 for (const path of requiredFiles) {
   existsSync(path) ? pass(`exists: ${path}`) : fail(`exists: ${path}`, "missing")
+}
+
+for (const path of optionalRepoFiles) {
+  if (existsSync(path)) pass(`exists optional repo file: ${path}`)
 }
 
 for (const path of [
@@ -129,7 +136,7 @@ if (existsSync(".codeartsdoer/plugins/inject-subagent-context.js")) {
   }
 }
 
-const textTargets = requiredFiles.filter((path) => path.endsWith(".md") || path.endsWith(".js"))
+const textTargets = [...requiredFiles, ...optionalRepoFiles].filter((path) => path.endsWith(".md") || path.endsWith(".js"))
 const combined = textTargets.filter(existsSync).map(read).join("\n")
 const forbidden = [
   [/docs\/inject-(initializer|coder|verifier)\.jsonl/, "stale docs/inject-*.jsonl path"],
