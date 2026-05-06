@@ -17,6 +17,10 @@ coordinator (primary)  →  Step 0: Mode detection (GREENFIELD / RESUME / NEW_IT
 
 详细协议见 `.codeartsdoer/agents/coordinator.md`。
 
+## 使用
+
+详见 [USAGE.md](./USAGE.md)。里面包含维护本仓库、接入新项目、PRD 驱动、继续未完成任务、给已有项目加新功能等完整示例 prompt。
+
 ### Iteration 模式
 
 | Mode | 触发 | 行为 |

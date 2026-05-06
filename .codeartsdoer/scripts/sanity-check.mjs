@@ -7,6 +7,7 @@ const requiredFiles = [
   ".gitignore",
   "LICENSE",
   "README.md",
+  "USAGE.md",
   "scripts/publish.sh",
   ".codeartsdoer/agents/coordinator.md",
   ".codeartsdoer/agents/initializer.md",
@@ -172,6 +173,28 @@ if (existsSync("README.md")) {
   readme.includes("scripts/publish.sh main")
     ? pass("README documents publish script")
     : fail("README documents publish script", "missing scripts/publish.sh usage")
+}
+
+if (existsSync("README.md")) {
+  const readme = read("README.md")
+  readme.includes("USAGE.md")
+    ? pass("README links usage guide")
+    : fail("README links usage guide", "missing USAGE.md link")
+}
+
+if (existsSync("USAGE.md")) {
+  const usage = read("USAGE.md")
+  const requiredPromptMarkers = [
+    "帮我做一个个人任务管理工具",
+    "请根据下面 PRD",
+    "继续",
+    "新增需求：给任务管理工具增加通知中心",
+    "新增需求：给这个已有项目增加登录功能",
+  ]
+  const missing = requiredPromptMarkers.filter((marker) => !usage.includes(marker))
+  missing.length === 0
+    ? pass("USAGE includes core example prompts")
+    : fail("USAGE includes core example prompts", `missing: ${missing.join(", ")}`)
 }
 
 for (const [path, expectedMode] of [
