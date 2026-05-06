@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 
 const requiredFiles = [
+  ".gitignore",
+  "LICENSE",
   "README.md",
   ".codeartsdoer/agents/coordinator.md",
   ".codeartsdoer/agents/initializer.md",
@@ -97,6 +99,22 @@ const forbidden = [
 
 for (const [pattern, detail] of forbidden) {
   pattern.test(combined) ? fail(`forbidden text: ${pattern}`, detail) : pass(`forbidden text absent: ${pattern}`)
+}
+
+if (existsSync("README.md")) {
+  const readme = read("README.md")
+  const mentionsMit = /\bMIT\b/.test(readme)
+  const hasLicense = existsSync("LICENSE") && /MIT License/.test(read("LICENSE"))
+  !mentionsMit || hasLicense
+    ? pass("README license statement has LICENSE file")
+    : fail("README license statement has LICENSE file", "README mentions MIT but LICENSE is missing or not MIT")
+}
+
+if (existsSync(".gitignore")) {
+  const gitignore = read(".gitignore")
+  gitignore.includes(".codeartsdoer/")
+    ? fail("top-level .gitignore keeps harness files trackable", "do not ignore .codeartsdoer/ at repository root")
+    : pass("top-level .gitignore keeps harness files trackable")
 }
 
 const failed = checks.filter((check) => !check.ok)

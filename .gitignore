@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Logs and local runtime noise
+*.log
+.codeartsdoer-plugin-debug.log
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Generated archives
+*.tgz
+*.zip
