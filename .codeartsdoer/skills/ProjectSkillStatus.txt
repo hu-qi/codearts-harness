@@ -1,0 +1,2 @@
+generate-app-spec=true
+project-architecture-summarizer=true
