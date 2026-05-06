@@ -99,6 +99,22 @@ cd /path/to/your-project && codearts-agent coordinator
 | 有代码但无 spec | 需要带新增/迭代关键词，走 `BOOTSTRAP_EXISTING` |
 | 目标目录不是 git repo | initializer 必须先 `git init` 并提交初始骨架 |
 
+## 发布同步
+
+维护本仓库时，提交前先跑自检：
+
+```bash
+node .codeartsdoer/scripts/sanity-check.mjs
+```
+
+提交后使用统一脚本同步 GitHub 和 GitCode/AtomGit：
+
+```bash
+GITCODE_TOKEN=<token> scripts/publish.sh main
+```
+
+脚本会推送指定分支和 tags 到 `origin`，如果配置了 `gitcode` remote，则继续同步到 GitCode。`GITCODE_TOKEN` 只通过临时 askpass 传给 git，不会写入 remote URL。
+
 ## 字符串 Contract
 
 | 字符串 | 来源 | 含义 |

@@ -7,6 +7,7 @@ const requiredFiles = [
   ".gitignore",
   "LICENSE",
   "README.md",
+  "scripts/publish.sh",
   ".codeartsdoer/agents/coordinator.md",
   ".codeartsdoer/agents/initializer.md",
   ".codeartsdoer/agents/coder.md",
@@ -52,14 +53,17 @@ for (const path of requiredFiles) {
 }
 
 for (const path of [
+  "scripts/publish.sh",
   ".codeartsdoer/plugins/inject-subagent-context.js",
   ".codeartsdoer/lib/harness-context.js",
 ]) {
   if (!existsSync(path)) continue
-  const result = spawnSync(process.execPath, ["--check", path], { encoding: "utf8" })
+  const command = path.endsWith(".sh") ? "bash" : process.execPath
+  const args = path.endsWith(".sh") ? ["-n", path] : ["--check", path]
+  const result = spawnSync(command, args, { encoding: "utf8" })
   result.status === 0
-    ? pass(`node --check: ${path}`)
-    : fail(`node --check: ${path}`, result.stderr.trim() || result.stdout.trim())
+    ? pass(`${path.endsWith(".sh") ? "bash -n" : "node --check"}: ${path}`)
+    : fail(`${path.endsWith(".sh") ? "bash -n" : "node --check"}: ${path}`, result.stderr.trim() || result.stdout.trim())
 }
 
 if (existsSync(".codeartsdoer/plugins/inject-subagent-context.js")) {
@@ -151,6 +155,23 @@ if (existsSync(".gitignore")) {
   gitignore.includes(".codeartsdoer/")
     ? fail("top-level .gitignore keeps harness files trackable", "do not ignore .codeartsdoer/ at repository root")
     : pass("top-level .gitignore keeps harness files trackable")
+}
+
+if (existsSync("scripts/publish.sh")) {
+  const publish = read("scripts/publish.sh")
+  const hasOriginPush = publish.includes('git push origin "${branch}"')
+  const hasGitcodePush = publish.includes('git push gitcode "${branch}"')
+  const hasTokenAskpass = publish.includes("GITCODE_TOKEN") && publish.includes("GIT_ASKPASS")
+  hasOriginPush && hasGitcodePush && hasTokenAskpass
+    ? pass("publish script syncs origin and gitcode without remote token")
+    : fail("publish script syncs origin and gitcode without remote token", "missing origin push, gitcode push, or askpass token flow")
+}
+
+if (existsSync("README.md")) {
+  const readme = read("README.md")
+  readme.includes("scripts/publish.sh main")
+    ? pass("README documents publish script")
+    : fail("README documents publish script", "missing scripts/publish.sh usage")
 }
 
 for (const [path, expectedMode] of [
